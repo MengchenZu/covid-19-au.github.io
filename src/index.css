@@ -3,7 +3,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
-  background-color: #efefef;
+  background-color:  #f2f4f4 ;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -25,11 +25,15 @@ header .bg {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url(./feiyan.jpeg);
   background-position: center;
   background-size: 100%;
+  background-repeat: no-repeat;
   z-index: -1;
-  filter: brightness(0.5);
+  filter: brightness(0.6);
+} .light header .bg {
+  background-image: url(assets/img/bg/bg-12-aposles-blue.jpg);
+} .dark header .bg {
+  background-image: url(assets/img/bg/Milky_way_-_southern_hemisphere_contrast_cropped.jpeg);
 }
 
 h1 {
@@ -40,7 +44,7 @@ h1 {
 h2 {
   margin: 0.5rem 0;
   padding: 3px 10px;
-  border-left: 0.2rem solid #f60;
+  border-left: 0.2rem solid #63b6f6;
   border-bottom: 1px solid #efefef;
   position: relative;
 }
@@ -52,7 +56,16 @@ h2 {
 }
 
 .card {
-  background-color: #fff;
-  padding: 1rem;
+  padding: 0.6rem;
   margin: 10px 0;
+} .light .card {
+  background-color: #fff;
+} .dark .card {
+  background-color: #000;
+}
+
+@media only screen and (min-width: 768px) and (orientation: portrait){
+  h2{
+    font-size: 2.5rem;
+  }
 }

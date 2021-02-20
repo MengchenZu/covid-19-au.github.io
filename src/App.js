@@ -1,479 +1,116 @@
-import React, { useState, Suspense, useEffect, useLayoutEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
+import CssBaseline from '@material-ui/core/CssBaseline';
+import { useRoutes, usePath } from 'hookrouter';
+import ReactGA from "react-ga";
+import Grid from "@material-ui/core/Grid";
+import { Alert } from '@material-ui/lab';
+
 import keyBy from "lodash.keyby";
 import dayjs from "dayjs";
 import "dayjs/locale/en-au";
 import relativeTime from "dayjs/plugin/relativeTime";
 
-import country from "./data/country";
-import testedCases from "./data/testedCases";
-import all from "./data/overall";
 import provinces from "./data/area";
-import Tag from "./Tag";
 
-import MbMap from "./ConfirmedMap";
-import "./App.css";
-import axios from "axios";
-import Papa from "papaparse";
+import Footer from "./common/Footer"
+import FAQPage from "./faq/FAQPage";
+import DailyHistoryPage from "./daily_history/DailyHistoryPage";
+import NewsPage from "./news/NewsPage";
+import InfoPage from "./info/InfoPage";
+import Navbar from "./common/Navbar";
+import HomePage from "./home/HomePage";
+import StatesPage from "./states/StatesPage";
+import WorldPage from "./world/WorldPage";
+import BlogPage from "./blog/BlogPage";
+import Blog from "./blog/Blog";
+import AboutUsPage from "./about_us/AboutUsPage";
+import StateChart from "./states/StateChart";
+import DashboardConfig from "./dashboard/DashboardConfig"
 
-import ReactGA from "react-ga";
-import CanvasJSReact from "./assets/canvasjs.react";
+import stateCaseData from "./data/stateCaseData";
+import Header from './common/Header';
+import SocialMediaShareModal from './common/social_media_share/SocialMediaShareModal';
+import ColorManagement from "./common/color_management/ColorManagement";
 
-import { TwitterTimelineEmbed } from "react-twitter-embed";
+// Include either dark or light css based on the saved settings
+if (ColorManagement.getColorSchemeType() === ColorManagement.COLOR_SCHEME_LIGHT) {
+  require("bootstrap-scss/bootstrap.scss");
+  //require("bootswatch/dist/flatly/bootstrap.min.css");
+} else {
+  require("bootswatch/dist/darkly/bootstrap.min.css");
+}
+require("./App.css");
 
-import Grid from "@material-ui/core/Grid";
-import NewsTimeline from "./NewsTimeline";
 
-let CanvasJSChart = CanvasJSReact.CanvasJSChart;
 dayjs.extend(relativeTime);
+
 ReactGA.initialize("UA-160673543-1");
-
 ReactGA.pageview(window.location.pathname + window.location.search);
-
-const GoogleMap = React.lazy(() => import("./GoogleMap"));
 
 const provincesByName = keyBy(provinces, "name");
 const provincesByPinyin = keyBy(provinces, "pinyin");
 
-const fetcher = url =>
-  axios(url).then(data => {
-    return data.data.data;
-  });
-
-function HistoryGraph({ countryData }) {
-  let newData = [[{ type: "date", label: "Day" }, "New Cases", "Deaths"]];
-  let today = Date.now();
-  const [loading, setLoading] = useState(true);
-  const [options, setOptions] = useState(null);
-  const [newOpts, setNewOpts] = useState(null);
-  useEffect(() => {
-    let monthTrans = {
-      0: "Jan",
-      1: "Feb",
-      2: "Mar",
-      3: "Apr",
-      4: "May",
-      5: "Jun",
-      6: "Jul",
-      7: "Aug",
-      8: "Sept",
-      9: "Oct",
-      10: "Nov",
-      11: "Dec"
-    };
-    let historyData = [
-      {
-        type: "spline",
-        name: "Confirmed",
-        showInLegend: true,
-        dataPoints: []
-      },
-      {
-        type: "spline",
-        name: "Deaths",
-        showInLegend: true,
-        dataPoints: []
-      },
-      {
-        type: "spline",
-        name: "Recovered",
-        showInLegend: true,
-        dataPoints: []
-      },
-      {
-        type: "spline",
-        name: "Existing",
-        showInLegend: true,
-        dataPoints: []
-      }
-    ];
-    let newData = [
-      {
-        type: "stackedColumn",
-        name: "New Case",
-        showInLegend: true,
-        dataPoints: []
-      },
-      {
-        type: "stackedColumn",
-        name: "Deaths",
-        showInLegend: true,
-        dataPoints: []
-      }
-    ];
-    let pre = [];
-    for (let key in countryData) {
-      let arr = key.split("-");
-      let date = new Date(arr[0], arr[1] - 1, arr[2]);
-      if ((today - date) / (1000 * 3600 * 24) <= 14) {
-        let labelName =
-          monthTrans[date.getMonth()] + " " + date.getDate().toString();
-        historyData[0]["dataPoints"].push({
-          y: countryData[key][0],
-          label: labelName
-        });
-        historyData[1]["dataPoints"].push({
-          y: countryData[key][2],
-          label: labelName
-        });
-        historyData[2]["dataPoints"].push({
-          y: countryData[key][1],
-          label: labelName
-        });
-        historyData[3]["dataPoints"].push({
-          y: countryData[key][3],
-          label: labelName
-        });
-        newData[0]["dataPoints"].push({
-          y: countryData[key][0] - pre[0],
-          label: labelName
-        });
-        newData[1]["dataPoints"].push({
-          y: countryData[key][2] - pre[2],
-          label: labelName
-        });
-      }
-      pre = countryData[key];
-    }
-    setOptions({
-      animationEnabled: true,
-      height: 260,
-      title: {
-        text: "Australian COVID-19 Trend",
-        fontSize: 20
-      },
-      legend: {
-        verticalAlign: "top"
-      },
-      toolTip: {
-        shared: true
-        // content:"{label}, {name}: {y}" ,
-      },
-
-      data: historyData
-    });
-    setNewOpts({
-      data: newData,
-      animationEnabled: true,
-      height: 260,
-      title: {
-        text: "Australia Covid-19 New Cases vs Deaths Chart (last two weeks)",
-        fontSize: 20
-      },
-      legend: {
-        verticalAlign: "top"
-      },
-      toolTip: {
-        shared: true
-        // content:"{label}, {name}: {y}" ,
-      }
-    });
-    // newData.push([historyData[2][0],historyData[2][1]-historyData[1][1],historyData[2][2]-historyData[1][2]])
-    // for(let i = 3; i < historyData.length; i++) {
-    //     newData.push([historyData[i][0], historyData[i][1] - historyData[i - 1][1], historyData[i][2]-historyData[i-1][2]])
-    // }
-
-    setLoading(false);
-  }, [countryData]);
-
-  return loading ? (
-    <div className="loading">Loading...</div>
-  ) : (
-    <div className="card">
-      <h2>Status Graph</h2>
-      <CanvasJSChart options={options} />
-      <CanvasJSChart options={newOpts} />
-      {/*<Chart*/}
-      {/*width={'100%'}*/}
-      {/*height={'400px'}*/}
-      {/*chartType="LineChart"*/}
-      {/*loader={<div>Loading Chart...</div>}*/}
-      {/*data={historyData}*/}
-      {/*options={options}*/}
-      {/*rootProps={{ 'data-testid': '3' }}*/}
-      {/*/>*/}
-      {/*<Chart*/}
-      {/*width={'100%'}*/}
-      {/*height={'400px'}*/}
-      {/*chartType="ColumnChart"*/}
-      {/*data={newData}*/}
-      {/*options={newOptions}*/}
-
-      {/*/>*/}
-    </div>
-  );
-}
-
-function New({ title, contentSnippet, link, pubDate, pubDateStr }) {
-  return (
-    <div className="new">
-      <div className="new-date">
-        <div className="relative">
-          {dayjs(pubDate)
-            .locale("en-au")
-            .fromNow()}
-        </div>
-        {dayjs(pubDate).format("YYYY-MM-DD HH:mm")}
-      </div>
-      <a href={link} className="title">
-        {title}
-      </a>
-      <div className="summary">{contentSnippet.split("&nbsp;")[0]}...</div>
-    </div>
-  );
-}
-
-function News({ province }) {
-  let Parser = require("rss-parser");
-
-  const [len, setLen] = useState(3);
-  const [news, setNews] = useState([]);
-
-  useEffect(() => {
-    let parser = new Parser({
-      headers: { "Access-Control-Allow-Origin": "*" }
-    });
-    const CORS_PROXY = "https://cors-anywhere.herokuapp.com/";
-    parser.parseURL(
-      CORS_PROXY +
-        "https://news.google.com/rss/search?q=COVID%2019-Australia&hl=en-US&gl=AU&ceid=AU:en",
-      function(err, feed) {
-        if (err) throw err;
-        // console.log(feed.title);
-        // feed.items.forEach(function(entry) {
-        //     console.log(entry);
-        // })
-        setNews(feed.items);
-      }
-    );
-  }, []);
-
-  return (
-    <div className="card">
-      <h2>News Feed</h2>
-      {news.slice(0, len).map(n => (
-        <New {...n} key={n.id} />
-      ))}
-      <div
-        className="more"
-        onClick={() => {
-          setLen(len + 2);
-        }}
-      >
-        <i>
-          <u>Click for more news...</u>
-        </i>
-      </div>
-    </div>
-  );
-}
-
-function Tweets({ province }) {
-  return (
-    <div className="card">
-      <h2>Twitter Feed</h2>
-      <div className="centerContent">
-        <div className="selfCenter standardWidth">
-          <TwitterTimelineEmbed
-            sourceType="list"
-            ownerScreenName="kLSAUPZszP2n6zX"
-            slug="COVID19-Australia"
-            options={{
-              height: 450
-            }}
-            noHeader="true"
-            noFooter="true"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ExposureSites() {
-  return <div></div>;
-}
-
-function Stat({
-  modifyTime,
-  confirmedCount,
-  suspectedCount,
-  deadCount,
-  curedCount,
-  name,
-  quanguoTrendChart,
-  hbFeiHbTrendChart,
-  data,
-  countryData
+// This is a custom filter UI for selecting
+// a unique option from a list
+function SelectColumnFilter({
+  column: { filterValue, setFilter, preFilteredRows, id },
 }) {
-  let confCountIncrease = 0;
-  let deadCountIncrease = 0;
-  let curedCountIncrease = 0;
-  if (data && countryData) {
-    confirmedCount = 0;
+  // Calculate the options for filtering
+  // using the preFilteredRows
+  const options = React.useMemo(() => {
+    const options = new Set()
+    preFilteredRows.forEach(row => {
+      options.add(row.values[id])
+    })
+    return [...options.values()]
+  }, [id, preFilteredRows])
 
-    deadCount = 0;
-    curedCount = 0;
-
-    for (let i = 0; i < data.length; i++) {
-      confirmedCount += parseInt(data[i][1]);
-      deadCount += parseInt(data[i][2]);
-      curedCount += parseInt(data[i][3]);
-    }
-    let lastTotal =
-      countryData[
-        Object.keys(countryData)[Object.keys(countryData).length - 1]
-      ];
-    confCountIncrease = confirmedCount - lastTotal[0];
-    deadCountIncrease = deadCount - lastTotal[2];
-    curedCountIncrease = curedCount - lastTotal[1];
-  } else {
-    confirmedCount = 0;
-
-    deadCount = 0;
-    curedCount = 0;
-  }
-
+  // Render a multi-select box
   return (
-    <div className="card">
-      <h2>
-        Status {name ? `· ${name}` : false}
-        <span className="due">Update Hourly</span>
-      </h2>
-      <div className="row">
-        <Tag
-          number={confirmedCount}
-          fColor={"#e74c3c"}
-          increased={confCountIncrease}
-        >
-          Confirmed
-        </Tag>
-        {/*<Tag number={suspectedCount || '-'}>*/}
-        {/*疑似*/}
-        {/*</Tag>*/}
-        <Tag
-          number={deadCount}
-          fColor={"#a93226"}
-          increased={deadCountIncrease}
-        >
-          Deaths
-        </Tag>
-        <Tag
-          number={curedCount}
-          fColor={"#00b321"}
-          increased={curedCountIncrease}
-        >
-          Recovered
-        </Tag>
-      </div>
-      {/*<div>*/}
-      {/*<img width="100%" src={quanguoTrendChart[0].imgUrl} alt="" />*/}
-      {/*</div>*/}
-      {/*<div>*/}
-      {/*<img width="100%" src={hbFeiHbTrendChart[0].imgUrl} alt="" />*/}
-      {/*</div>*/}
-    </div>
-  );
+    <select
+      className="customStateSelect"
+      value={filterValue}
+      onChange={e => {
+        setFilter(e.target.value || undefined)
+      }}
+    >
+      <option style={{ textAlign: "center" }} value="">All</option>
+      {options.map((option, i) => (
+        <option key={i} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  )
 }
 
-function Fallback() {
-  return (
-    <div className="fallback">
-      <div>
-        Forked From:{" "}
-        <a href="https://github.com/shfshanyue/2019-ncov">
-          shfshanyue/2019-ncov
-        </a>
-      </div>
-
-      <div>
-        Our GitHub:{" "}
-        <a href="https://github.com/covid-19-au/covid-19-au.github.io">
-          covid-19-au
-        </a>
-      </div>
-      <div>
-        This site is developed by a{" "}
-        <a href="https://github.com/covid-19-au/covid-19-au.github.io/blob/dev/README.md">
-          volunteer team
-        </a>{" "}
-        from Faculty of IT, Monash University for non-commercial use only.
-      </div>
-      <div>
-        <a href="https://www.webfreecounter.com/" target="_blank">
-          <img
-            src="https://www.webfreecounter.com/hit.php?id=gevkadfx&nd=6&style=1"
-            border="0"
-            alt="hit counter"
-          />
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function Area({ area, onChange, data }) {
-  const renderArea = () => {
-    let latest =
-      testedCases[
-        Object.keys(testedCases)[Object.keys(testedCases).length - 1]
-      ];
-
-    return data.map(x => (
-      <div className="province" key={x.name || x.cityName}>
-        {/*<div className={`area ${x.name ? 'active' : ''}`}>*/}
-        {/*{ x.name || x.cityName }*/}
-        {/*</div>*/}
-        {/*<div className="confirmed">{ x.confirmedCount }</div>*/}
-        {/*<div className="death">{ x.deadCount }</div>*/}
-        {/*<div className="cured">{ x.curedCount }</div>*/}
-        <div className={"area"}>
-          <strong>{x[0]}</strong>
-        </div>
-        <div className="confirmed">
-          <strong>{x[1]}</strong>
-        </div>
-        <div className="death">
-          <strong>{x[2]}</strong>
-        </div>
-        <div className="cured">
-          <strong>{x[3]}</strong>
-        </div>
-        <div className="tested">{latest[x[0]]}</div>
-      </div>
-    ));
-  };
-
-  return (
-    <>
-      <div className="province header">
-        <div className="area header">State</div>
-        <div className="confirmed header">Confirmed</div>
-        <div className="death header">Death</div>
-        <div className="cured header">Recovered</div>
-        <div className="tested header">*Tested</div>
-      </div>
-      {renderArea()}
-    </>
-  );
-}
-
-function Header({ province }) {
-  return (
-    <header>
-      <div className="bg"></div>
-      <h1
-        style={{
-          fontSize: "120%"
-        }}
-      >
-        COVID-19 Real-time Report in Australia
-      </h1>
-      {/*<i>By Students from Monash</i>*/}
-    </header>
-  );
-}
 
 function App() {
+  const columns = React.useMemo(
+    () => [
+      {
+        Header: 'Hospital',
+        accessor: 'name'
+      },
+      {
+        Header: 'Address',
+        accessor: 'address'
+      },
+      {
+        Header: 'Phone',
+        accessor: 'hospitalPhone'
+      },
+      {
+        Header: 'State',
+        accessor: 'state',
+        Filter: SelectColumnFilter,
+        filter: 'includes'
+      }
+    ],
+    []
+  )
+
   const [province, _setProvince] = useState(null);
   const setProvinceByUrl = () => {
     const p = window.location.pathname.slice(1);
@@ -504,21 +141,10 @@ function App() {
 
   const [myData, setMyData] = useState(null);
   useEffect(() => {
-    Papa.parse(
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWq32Sh-nuY61nzNCYauMYbiOZhIE8TfnyRhu1hnVs-i-oLdOO65Ax0VHDtcctn44l7NEUhy7gHZUm/pub?output=csv",
-      {
-        download: true,
-        complete: function(results) {
-          // console.log("requested");
-          results.data.splice(0, 1);
-          let sortedData = results.data.sort((a, b) => {
-            return b[1] - a[1];
-          });
-
-          setMyData(results.data);
-        }
-      }
-    );
+    let sortedData = stateCaseData.values.sort((a, b) => {
+      return b[1] - a[1];
+    });
+    setMyData(sortedData);
   }, [province]);
   useEffect(() => {
     if (province) {
@@ -533,98 +159,151 @@ function App() {
 
   const data = !province
     ? provinces.map(p => ({
-        name: p.provinceShortName,
-        value: p.confirmedCount
-      }))
+      name: p.provinceShortName,
+      value: p.confirmedCount
+    }))
     : provincesByName[province.name].cities.map(city => ({
-        name: city.fullCityName,
-        value: city.confirmedCount
-      }));
+      name: city.fullCityName,
+      value: city.confirmedCount
+    }));
 
   const area = province ? provincesByName[province.name].cities : provinces;
-  const overall = province ? province : all;
-  if (myData) {
-    return (
-      <div>
-        <Grid container spacing={gspace} justify="center" wrap="wrap">
-          <Grid item xs={12}>
-            <Header province={province} />
-          </Grid>
-          <Grid item xs={12} sm={12} md={10} lg={6} xl={5}>
-            <Stat
-              {...{ ...all, ...overall }}
-              name={province && province.name}
-              data={myData}
-              countryData={country}
-            />
-            <div className="card">
-              <h2>
-                Infection Map {province ? `· ${province.name}` : false}
-                {province ? (
-                  <small onClick={() => setProvince(null)}>Return</small>
-                ) : null}
-              </h2>
-              <Suspense fallback={<div className="loading">Loading...</div>}>
-                <GoogleMap
-                  province={province}
-                  data={data}
-                  onClick={name => {
-                    const p = provincesByName[name];
-                    if (p) {
-                      setProvince(p);
-                    }
-                  }}
-                  newData={myData}
-                />
-                {/*{*/}
-                {/*province ? false :*/}
-                {/*<div className="tip">*/}
-                {/*Click on the state to check state details.*/}
-                {/*</div>*/}
-                {/*}*/}
-              </Suspense>
-              <Area area={area} onChange={setProvince} data={myData} />
-              <a
-                style={{
-                  fontSize: "50%",
-                  float: "right",
-                  color: "lightgrey"
-                }}
-                href="https://www.theaustralian.com.au"
-              >
-                Data: @The Australian
-              </a>
-              <span style={{ fontSize: "60%" }} className="due">
-                *Tested cases are updated daily.
-              </span>
-            </div>
-          </Grid>
-          <Grid item xs={12} sm={12} md={10} lg={6} xl={5}>
-            <NewsTimeline></NewsTimeline>
-            <MbMap />
-          </Grid>
-          <Grid item xs={12} sm={12} md={10} lg={6} xl={5}>
-            <HistoryGraph countryData={country} />
-          </Grid>
+  const [nav, setNav] = useState("Home");
+  // This is used to set the state of the page for navbar CSS styling.
+  const [showSocialMediaIcons, setShowSocialMediaIcons] = useState(false);
+  const setModalVisibility = state => {
+    setShowSocialMediaIcons(state);
+  };
 
-          <Grid item xs={12} sm={12} md={10} lg={6} xl={5}>
-            <Tweets province={province} />
-          </Grid>
-          {/*<Grid item xs={12} sm={12} md={10} lg={6} xl={5}>*/}
-          {/*<News />*/}
-          {/*</Grid>*/}
-          <Grid item xs={12}>
-            <ExposureSites />
-          </Grid>
-          <Grid item xs={12}>
-            <Fallback />
-          </Grid>
-        </Grid>
-      </div>
-    );
-  } else {
-    return null;
+  // Set the routes for each page and pass in props.
+  const routes = {
+    "/": () => <HomePage province={province} overall={province} myData={myData} area={area} data={data} setProvince={setProvince} gspace={gspace} />,
+    "/info": () => <InfoPage columns={columns} gspace={gspace} />,
+    "/news": () => <NewsPage province={province} gspace={gspace} />,
+    "/faq": () => <FAQPage />,
+    "/dailyHistory": () => <DailyHistoryPage />,
+    "/world": () => <WorldPage />,
+    "/state": () => <StatesPage />,
+
+    // Remember to update these based on how many
+    // cases there currently are in each state/territory!
+    "/state/vic": () => <StateChart state="VIC"
+                                    dataType={"status_active"}
+                                    timePeriod={null} />,
+    "/state/nsw": () => <StateChart state="NSW"
+                                    dataType={"status_active"}
+                                    timePeriod={null} />,
+    "/state/qld": () => <StateChart state="QLD"
+                                    dataType={"status_active"}
+                                    timePeriod={null} />,
+    "/state/act": () => <StateChart state="ACT"
+                                    dataType={"total"}
+                                    timePeriod={21} />,
+    "/state/sa": () => <StateChart state="SA"
+                                   dataType={"total"}
+                                   timePeriod={21} />,
+    "/state/wa": () => <StateChart state="WA"
+                                   dataType={"total"}
+                                   timePeriod={21} />,
+    "/state/nt": () => <StateChart state="NT"
+                                   dataType={"total"}
+                                   timePeriod={21} />,
+    "/state/tas": () => <StateChart state="TAS"
+                                    dataType={"status_active"}
+                                    timePeriod={null} />,
+
+    "/dashboard": () => <DashboardConfig province={province} myData={myData} overall={province} inputData={data} setProvince={setProvince} area={area} />,
+    "/blog": () => <Blog />,
+    "/blog/:id": ({ id }) => <Blog id={id} />,
+    "/blog/post/:id": ({ id }) => <BlogPage id={id} />,
+    "/about-us": () => <AboutUsPage />
+  };
+
+  // The hook used to render the routes.
+  const routeResult = useRoutes(routes);
+  const path = usePath()
+
+  const prefersDarkMode =
+      ColorManagement.getColorSchemeType() === ColorManagement.COLOR_SCHEME_DARK;
+  const theme = React.useMemo(
+    () =>
+      createMuiTheme({
+        palette: {
+          type: prefersDarkMode ? 'dark' : 'light',
+        },
+      }),
+    [prefersDarkMode],
+  );
+
+  if (myData) {
+    if (path == "/dashboard") {
+      if (window.innerHeight > window.innerWidth) {
+        return (
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <div style={{ maxHeight: window.innerHeight }}>
+              <SocialMediaShareModal
+                visible={showSocialMediaIcons}
+                onCancel={() => setShowSocialMediaIcons(false)}
+              />
+              <Grid container spacing={gspace} justify="center" wrap="wrap">
+                <Grid item xs={12} className="removePadding">
+                  <Header province={province} />
+                </Grid>
+                {routeResult}
+              </Grid>
+            </div>
+          </ThemeProvider>
+        )
+      } else {
+        return (
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <div style={{ maxHeight: window.innerHeight }}>
+              <SocialMediaShareModal
+                visible={showSocialMediaIcons}
+                onCancel={() => setShowSocialMediaIcons(false)}
+              />
+              <Grid container spacing={gspace} justify="center" wrap="wrap">
+                {routeResult}
+              </Grid>
+            </div>
+          </ThemeProvider>
+        )
+      }
+    } else {
+      return (
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <div className={prefersDarkMode ? 'dark' : 'light'}>
+            <SocialMediaShareModal
+              visible={showSocialMediaIcons}
+              onCancel={() => setShowSocialMediaIcons(false)}
+            />
+            <Grid container spacing={gspace} justify="center" wrap="wrap">
+              <Grid item xs={12} className="removePadding">
+                <Header province={province} />
+              </Grid>
+              {window.location.href === "http://localhost:3008/" || window.location.href === "http://covid-19-au.com/" || window.location.href === "https://covid-19-au.com/" ?
+                <Alert style={{ width: '100%' }} severity="info">
+                    <p style={{ fontSize: "0.85rem" }} className="card-text">
+                      Notice: <u>https://covid-19-au.com</u> is the only valid url of our website, others that linked to our website are not related to us.
+                    </p>
+                </Alert> : <div />}
+              <Grid item xs={12} className="removePadding">
+                <Navbar setNav={setNav} nav={nav} />
+              </Grid>
+              {routeResult}
+              <Grid item xs={12}>
+                <Footer setModalVisibility={setModalVisibility} setNav={setNav} nav={nav} />
+              </Grid>
+            </Grid>
+          </div>
+        </ThemeProvider>
+      );
+    }
   }
+  return null;
 }
 
 export default App;

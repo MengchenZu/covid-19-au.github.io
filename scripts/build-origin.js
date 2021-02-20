@@ -16,12 +16,6 @@ const fs = require('fs')
 //   fs.writeFileSync('./src/data/countries.json', countries)
 // }
 //
-// const loadOverall = async data => {
-//   const overall = data
-//     .match(/window.getStatisticsService = (.*?)}catch/)[1]
-//   fs.writeFileSync('./src/data/overall.json', overall)
-// }
-//
 // const loadCityList = async data => {
 //   const cityList = data
 //     .match(/window.getAreaStat = (.*?)}catch/)[1]
@@ -83,3 +77,20 @@ const fs = require('fs')
 //   process.exit(1)
 // })
 //
+
+let url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWq32Sh-nuY61nzNCYauMYbiOZhIE8TfnyRhu1hnVs-i-oLdOO65Ax0VHDtcctn44l7NEUhy7gHZUm/pub?output=csv"
+
+let webdriver = require("selenium-webdriver");
+const {Builder, By, Key, until} = require('selenium-webdriver');
+const firefox = require('selenium-webdriver/firefox');
+require("geckodriver");// Application Server
+let options = new firefox.Options().addArguments('--headless');
+(async function example() {
+    let driver = await new Builder().forBrowser('chrome').build();
+    try {
+        await driver.get(url)
+        console.log(driver.getPageSource() )
+    } finally {
+        await driver.quit();
+    }
+})();
